@@ -4,30 +4,33 @@ from time import sleep
 AUTH_URL = 'https://accounts.spotify.com/authorize'
 TOKEN_URL = 'https://accounts.spotify.com/api/token'
 
+#returns a tuple (boolean for is active, data for the json data if available)
 def get_current_track_info(token):
-    # should handle if no track is being played
     headers = {
         'Authorization': f"Bearer {token}"
     }
 
-    response = requests.get('https://api.spotify.com/v1/me/player', headers=headers)
-    track = response.json()
+    response = requests.get('https://api.spotify.com/v1/me/player/currently-playing', headers=headers)
+    if response.content:
+        track = response.json()
 
-    track_id = track['item']['id']
-    progress = track['progress_ms']
-    track_uri = track['item']['uri']
-    track_duration = track['item']['duration_ms']
-    is_playing = track['is_playing']
+        track_id = track['item']['id']
+        progress = track['progress_ms']
+        track_uri = track['item']['uri']
+        track_duration = track['item']['duration_ms']
+        is_playing = track['is_playing']
 
-    current_track_info = {
-        "id": track_id,
-        "progress": progress,
-        "uri": track_uri,
-        "duration": track_duration,
-        "is_playing":is_playing
-    }
+        current_track_info = {
+            "id": track_id,
+            "progress": progress,
+            "uri": track_uri,
+            "duration": track_duration,
+            "is_playing":is_playing
+        }
 
-    return current_track_info
+        return True, current_track_info
+    else:
+        return False, None
 
 def jump_to_progress(token, progress):
     headers = {
@@ -80,29 +83,60 @@ def resume(token):
     }
     requests.put(url='https://api.spotify.com/v1/me/player/play', headers=headers)
 
-# doesnt handle if host isnt playing a song...
-def join(host_token, joiner_token):
-    host_track = get_current_track_info(host_token)
-    headers = {
-        'Authorization': f'Bearer {joiner_token}',
-        'Content-Type': 'application/json'
-    }
-    json_data = {
-        'uris': [host_track['uri']],
-        'position_ms': host_track['progress']
-    }
-    requests.put(url='https://api.spotify.com/v1/me/player/play', headers=headers, json=json_data)
+# gives priority to user 1 (if both are playing a track, they join user 1)
+def join(user1_token, user2_token):
+    user1_is_active, user1_track = get_current_track_info(user1_token)
+    user2_is_active, user2_track = get_current_track_info(user2_token)
+
+    if not (user1_is_active and user2_is_active):
+        print('waiting for both users to have active devices')
+        sleep(2)
+        join(user1_token, user2_token)
+        return
+    
+    if user1_track['is_playing']:
+        headers = {
+            'Authorization': f'Bearer {user2_token}',
+            'Content-Type': 'application/json'
+        }
+        json_data = {
+            'uris': [user1_track['uri']],
+            'position_ms': user1_track['progress']
+        }
+        requests.put(url='https://api.spotify.com/v1/me/player/play', headers=headers, json=json_data)
+        update(user1_token, user2_token, 1)
+    elif user2_track['is_playing']:
+        headers = {
+            'Authorization': f'Bearer {user1_token}',
+            'Content-Type': 'application/json'
+        }
+        json_data = {
+            'uris': [user2_track['uri']],
+            'position_ms': user2_track['progress']
+        }
+        requests.put(url='https://api.spotify.com/v1/me/player/play', headers=headers, json=json_data)
+        update(user1_token, user2_token, 2)
+    else:
+        print('waiting for someone to start a track')
+        sleep(2)
+        join(user1_token, user2_token)
 
 # if both users add songs at the same time, thats probably bad. maybe fixed by calling more frequent?
-def update(user1_token, user2_token):
-    user1_initial_track = get_current_track_info(user1_token)
-    update_unwrapped(user1_token, user2_token, False, user1_initial_track['uri'], user1_initial_track['progress'], user1_initial_track['uri'])
+def update(user1_token, user2_token, host_user):
+    if host_user == 1:
+        user1_initial_track = get_current_track_info(user1_token)[1]
+        update_unwrapped(user1_token, user2_token, False, user1_initial_track['uri'], user1_initial_track['progress'], user1_initial_track['uri'])
+    elif host_user == 2:
+        user2_initial_track = get_current_track_info(user2_token)[1]
+        update_unwrapped(user1_token, user2_token, False, user2_initial_track['uri'], user2_initial_track['progress'], user2_initial_track['uri'])
+    else:
+        print('invalid host_user')
 
 # how do you make wrapper functions lol
 def update_unwrapped(user1_token, user2_token, is_playing, prev_song_uri, prev_progress, initial_track_uri):
     print('loop')
-    user1_track = get_current_track_info(user1_token)
-    user2_track = get_current_track_info(user2_token)
+    user1_track = get_current_track_info(user1_token)[1]
+    user2_track = get_current_track_info(user2_token)[1]
     user1_queue = get_queue(user1_token, initial_track_uri)
     user2_queue = get_queue(user2_token, initial_track_uri)
 

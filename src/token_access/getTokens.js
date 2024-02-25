@@ -1,16 +1,6 @@
 const buddyList = require('.')
 const fs = require('fs')
 
-// function getConfigs() {
-//   fs.readFile('src/config/config.json', 'utf8', (err, data) => {
-//     if (err) {
-//       console.error('Error reading file:', err);
-//       return;
-//     }
-//     return JSON.parse(data);
-//   })
-// }
-
 function getConfigs() {
   return new Promise((resolve, reject) => {
     fs.readFile('src/config/config.json', 'utf8', (err, data) => {
