@@ -1,11 +1,6 @@
 # Spotify-Jam-For-Desktop
 
-## Work in progress
-
-Spotify Jam is currently only for mobile users, so this is a way for laptop users to join in :D<br>
-This only supports 2 Listeners for now<br>
-Spotify API does not allow to remove or clear queue. Please clear your queues before joining a Jam session so that both user's queues can match. This also means that you cant remove a song from queue, since I cant remove it from the other person's queue. You can just skip once you get to that song<br>
-Spotify API also does not differentiate between "next up" and "queue". Turn off autoplay similar content before joining to deal with this issue.<br>
+As of March 14, 2024, Spotify Jam is now available for desktop. This program is no longer needed for using spotify Jam on desktop. 
 
 ## Limitations (trying to improve these)
 
